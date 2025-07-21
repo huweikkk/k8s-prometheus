@@ -14,7 +14,7 @@
 
 ## 安装说明
 
-- `k8s/` 文件夹包含各个组件的 Service 配置文件（如 Prometheus、Grafana 等）；
+- `k8s/` 文件夹包含k8s需监控主组件的 Service 配置文件;
 - CoreDNS 默认已内置 Service，不需额外创建；
 - kubelet 相关 Service 也无需单独配置。
 
