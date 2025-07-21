@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: newmonitoring
+data:
+  alertmanager.yml: |-
+    global:
+      resolve_timeout: 2m
+      wechat_api_url: 'https://qyapi.weixin.qq.com/cgi-bin/'
+
+    templates:
+      - '/etc/alertmanager/wechat.tmpl'   # 👈 引用模板文件
+
+    route:
+      group_by: ['alertname']
+      group_wait: 15s
+      group_interval: 5m
+      repeat_interval: 1h
+      receiver: 'wechat'
+
+    receivers:
+      - name: 'wechat'
+        wechat_configs:
+          - agent_id: 'your agent_id'
+            corp_id: 'your corp_id'
+            api_secret: 'your api_secret'
+            to_party: '3'
+            send_resolved: true
+            message: '{{ template "wechat.default.message" . }}'  # 👈 使用模板
+
+    inhibit_rules:
+      - source_match:
+          severity: 'critical'
+        target_match:
+          severity: 'warning'
+        equal: ['alertname', 'dev', 'instance']
+
+  wechat.tmpl: |-
+    {{ define "wechat.default.message" }}
+    {{- if gt (len .Alerts.Firing) 0 -}}
+    {{- range $index, $alert := .Alerts -}}
+    {{- if eq $index 0 }}
+    ==========异常告警==========
+    告警类型: {{ $alert.Labels.alertname }}
+    告警级别: {{ $alert.Labels.severity }}
+    告警详情: {{ $alert.Annotations.summary }}; {{ $alert.Annotations.description }}
+    故障时间: {{ ($alert.StartsAt.Add 28800e9).Format "2006-01-02 15:04:05" }}
+    {{- if $alert.Labels.instance }}实例信息: {{ $alert.Labels.instance }}{{- end }}
+    {{- if $alert.Labels.namespace }}命名空间: {{ $alert.Labels.namespace }}{{- end }}
+    {{- if $alert.Labels.node }}节点信息: {{ $alert.Labels.node }}{{- end }}
+    {{- if $alert.Labels.pod }}实例名称: {{ $alert.Labels.pod }}{{- end }}
+    ============END============
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- if gt (len .Alerts.Resolved) 0 -}}
+    {{- range $index, $alert := .Alerts -}}
+    {{- if eq $index 0 }}
+    ==========异常恢复==========
+    告警类型: {{ $alert.Labels.alertname }}
+    告警级别: {{ $alert.Labels.severity }}
+    告警详情: {{ $alert.Annotations.summary }}; {{ $alert.Annotations.description }}
+    故障时间: {{ ($alert.StartsAt.Add 28800e9).Format "2006-01-02 15:04:05" }}
+    恢复时间: {{ ($alert.EndsAt.Add 28800e9).Format "2006-01-02 15:04:05" }}
+    {{- if $alert.Labels.instance }}实例信息: {{ $alert.Labels.instance }}{{- end }}
+    {{- if $alert.Labels.namespace }}命名空间: {{ $alert.Labels.namespace }}{{- end }}
+    {{- if $alert.Labels.node }}节点信息: {{ $alert.Labels.node }}{{- end }}
+    {{- if $alert.Labels.pod }}实例名称: {{ $alert.Labels.pod }}{{- end }}
+    ============END============
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
+

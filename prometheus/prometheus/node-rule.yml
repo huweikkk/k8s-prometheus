@@ -1,0 +1,83 @@
+groups:
+  - name: node.rules
+    rules:
+      # 1. Node 重启检测
+      - alert: NodeRebooted
+        expr: changes(node_boot_time_seconds[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Node reboot detected on {{ $labels.instance }}"
+          description: "The node {{ $labels.instance }} has rebooted in the last 5 minutes."
+
+      # 2. CPU 负载过高（15分钟平均负载 > 核心数）
+      - alert: HighLoadAverage
+        expr: node_load15 / count(count(node_cpu_seconds_total{mode="system"}) by (instance)) > 1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High CPU load on {{ $labels.instance }}"
+          description: "1-minute load average is higher than the number of cores on {{ $labels.instance }}."
+
+      # 3. 内存使用率过高（> 85%）
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.85
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is above 85% on {{ $labels.instance }}."
+
+      # 4. 磁盘 I/O 等待时间高（使用 iowait 占比 > 20%）
+      - alert: HighDiskIOWait
+        expr: rate(node_cpu_seconds_total{mode="iowait"}[5m]) > 0.2
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High disk IO wait on {{ $labels.instance }}"
+          description: "Disk IO wait is higher than 20% on {{ $labels.instance }} in the last 5 minutes."
+
+      # 5. 磁盘利用率高（%util > 80%）
+      - alert: DiskUtilizationHigh
+        expr: sum by (instance, device)(
+                rate(node_disk_io_time_seconds_total{device!~"^(ram|loop|fd|dm-|sr).*"}[5m])
+              ) * 100 > 80
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High disk utilization on {{ $labels.device }} at {{ $labels.instance }}"
+          description: "The disk {{ $labels.device }} on {{ $labels.instance }} has been over 80% utilized (busy) for the last 5 minutes."
+
+      # 6. 网络流量过高（入站或出站 > 100Mbps），过滤掉虚拟和无关接口
+      - alert: NetworkTrafficHigh
+        expr: |
+          sum by(instance, device) (
+            rate(node_network_receive_bytes_total{device!~"^(lo|docker0|br-|veth|tun|tap|vmnet|virbr)"}[5m])
+          ) > 1e8 or
+          sum by(instance, device) (
+            rate(node_network_transmit_bytes_total{device!~"^(lo|docker0|br-|veth|tun|tap|vmnet|virbr)"}[5m])
+          ) > 1e8
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High network traffic on {{ $labels.device }} at {{ $labels.instance }}"
+          description: "Network traffic (inbound or outbound) on {{ $labels.device }} of {{ $labels.instance }} is above 100 Mbps for more than 5 minutes."
+
+      # 8. 网络错误包数过高（错误包数量超过阈值）
+      - alert: NetworkErrorsHigh
+        expr: |
+          rate(node_network_receive_errs_total{device!~"^(lo|docker0|br-|veth|tun|tap|vmnet|virbr)"}[5m]) > 10 or
+          rate(node_network_transmit_errs_total{device!~"^(lo|docker0|br-|veth|tun|tap|vmnet|virbr)"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High network error rate on {{ $labels.device }} at {{ $labels.instance }}"
+          description: "Network interface {{ $labels.device }} on {{ $labels.instance }} has a high error rate (>10 errors per 5 minutes)."
+
