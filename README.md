@@ -4,13 +4,13 @@
 
 本项目用于搭建基于 Kubernetes 的 Prometheus 监控体系，包含以下核心组件及版本：
 
-| 组件名称            | 版本号     |
-|---------------------|------------|
-| Kubernetes          | v1.23.6    |
-| Prometheus          | v2.32.1    |
-| Grafana             | v8.3.3     |
-| kube-state-metrics  | v2.3.0     |
-| Alertmanager        | v0.27.0    |
+| 组件名称            | 版本号     |Services端口|Services类型|
+|---------------------|------------|||
+| Kubernetes          | v1.23.6    |||
+| Prometheus          | v2.32.1    |30040|nodePort|
+| Grafana             | v8.3.3     |30060|nodePort|
+| kube-state-metrics  | v2.3.0     |30080|nodePort|
+| Alertmanager        | v0.27.0    |30050|nodePort|
 
 ## 安装说明
 
